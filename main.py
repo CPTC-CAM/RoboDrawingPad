@@ -110,12 +110,28 @@ class DrawingApp:
                 home_joints = await motion_group.joints()
                 current_pose = await motion_group.tcp_pose(tcp)
 
+                # Loop through points from points.txt and add coordinates to robot action plan
+                with open("points.txt", "r") as file:
+                    lines = file.readlines()
+                    actions = []
+                    for line in lines:
+                        x, y = map(int, line.strip().split(","))
+                        if x == 0 and y == 0:
+                            # Lift the pen (move to home position)
+                            actions.append(joint_ptp(home_joints))
+                        else:
+                            # Move to the point (x, y) with a fixed z value
+                            actions.append(cartesian_ptp(current_pose @ Pose((x, y, 0, 0, 0, 0))))
+
+                        trajectory = await motion_group.plan(actions, tcp)
+                        await motion_group.execute(trajectory, tcp, actions)
+
                 # Movement actions
-                actions = [
-                    joint_ptp(home_joints),
-                    cartesian_ptp(current_pose @ Pose((200, 0, 0, 0, 0, 0))),
-                    joint_ptp(home_joints)
-                ]
+                #actions = [
+                #    joint_ptp(home_joints),
+                #    cartesian_ptp(current_pose @ Pose((200, 0, 0, 0, 0, 0))),
+                #    joint_ptp(home_joints)
+                #]
 
                 trajectory = await motion_group.plan(actions, tcp)
                 await motion_group.execute(trajectory, tcp, actions)

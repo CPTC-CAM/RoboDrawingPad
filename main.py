@@ -1,5 +1,8 @@
 import tkinter as tk
+from nova import Nova
+from nova import api
 from tkinter import messagebox
+import asyncio
 
 class DrawingApp:
     def __init__(self, root):
@@ -27,8 +30,7 @@ class DrawingApp:
         self.save_button = tk.Button(root, text="Save Points", command=self.save_points)
         self.save_button.pack(pady=10)
         
-        # Add a button for "Draw with Robot" functionality
-        self.robot_button = tk.Button(root, text="Draw with Robot", command=self.draw_with_robot)
+        self.robot_button = tk.Button(root, text="Draw with Robot", command=lambda: root.after(0, asyncio.run(self.draw_with_robot())))
         self.robot_button.pack(pady=10)
     
     def start_drawing(self, event):
@@ -66,9 +68,25 @@ class DrawingApp:
 
         messagebox.showinfo("Save Points", "Points have been saved successfully!")
     
-    def draw_with_robot(self):
+    async def draw_with_robot(self):
         """Placeholder for the 'Draw with Robot' functionality."""
         messagebox.showinfo("Robot Drawing...", "Draw with Robot functionality will be implemented later.")
+        await self.execDraw()
+
+    # self added as a parameter to the function to be able to call it from the button
+    async def execDraw(self):
+        async with Nova() as nova:
+            cell = nova.cell()
+            controller = await cell.ensure_virtual_robot_controller(
+                "myvirtualbot",
+                "universalrobots-ur5cb",
+                "universalrobots"
+            )
+
+        async with controller[0] as motion_group:
+            tcp = "Flange"
+            home_joints = await motion_group.joints()
+            current_pose = await motion_group.tcp_pose(tcp)
 
 if __name__ == "__main__":
     root = tk.Tk()

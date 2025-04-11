@@ -1,8 +1,15 @@
 import tkinter as tk
+from tkinter import messagebox
+
 from nova import Nova
 from nova import api
-from tkinter import messagebox
+from nova.actions import cartesian_ptp, joint_ptp
+from nova.types import Pose
+
 import asyncio
+
+import os
+from dotenv import load_dotenv
 
 class DrawingApp:
     def __init__(self, root):
@@ -75,6 +82,20 @@ class DrawingApp:
 
     # self added as a parameter to the function to be able to call it from the button
     async def execDraw(self):
+        # Connect to your Nova instance (or use .env file)
+        # Load environment variables from .env file
+        load_dotenv()
+
+        # Retrieve host and access token from environment variables
+        # host = os.getenv("NOVA_API")
+        # access_token = os.getenv("NOVA_ACCESS_TOKEN")
+
+        nova = Nova(
+            host="hostnameorIPhere",
+            username="yourusername",
+            password="yourpassword",
+        )
+
         async with Nova() as nova:
             cell = nova.cell()
             controller = await cell.ensure_virtual_robot_controller(
@@ -83,10 +104,23 @@ class DrawingApp:
                 "universalrobots"
             )
 
-        async with controller[0] as motion_group:
-            tcp = "Flange"
-            home_joints = await motion_group.joints()
-            current_pose = await motion_group.tcp_pose(tcp)
+            # Define starting positions
+            async with controller[0] as motion_group:
+                tcp = "Flange"
+                home_joints = await motion_group.joints()
+                current_pose = await motion_group.tcp_pose(tcp)
+
+                # Movement actions
+                actions = [
+                    joint_ptp(home_joints),
+                    cartesian_ptp(current_pose @ Pose((200, 0, 0, 0, 0, 0))),
+                    joint_ptp(home_joints)
+                ]
+
+                trajectory = await motion_group.plan(actions, tcp)
+                await motion_group.execute(trajectory, tcp, actions)
+
+        await nova.close()
 
 if __name__ == "__main__":
     root = tk.Tk()

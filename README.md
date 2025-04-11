@@ -4,7 +4,7 @@ While drawing the points are recorded and will then be streamed to a UR5cb3 usin
 mimicking the way the user drew their text.
 
 ## Prerequisites
-- Run `pip install wandelbots-nova`
+- Run `pip install -r requirements.txt`
 - Create a python virtual environment `python -m venv myvirtualenv
     - Choose the new venv as the Python interpreter in VS Code
 - Local or cloud instance of NOVA

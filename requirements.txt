@@ -1,0 +1,2 @@
+wandelbots-nova
+python-dotenv

@@ -124,16 +124,6 @@ class DrawingApp:
                             # Move to the point (x, y) with a fixed z value
                             actions.append(cartesian_ptp(current_pose @ Pose((x, y, 0, 0, 0, 0))))
 
-                        trajectory = await motion_group.plan(actions, tcp)
-                        await motion_group.execute(trajectory, tcp, actions)
-
-                # Movement actions
-                #actions = [
-                #    joint_ptp(home_joints),
-                #    cartesian_ptp(current_pose @ Pose((200, 0, 0, 0, 0, 0))),
-                #    joint_ptp(home_joints)
-                #]
-
                 trajectory = await motion_group.plan(actions, tcp)
                 await motion_group.execute(trajectory, tcp, actions)
 

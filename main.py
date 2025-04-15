@@ -154,8 +154,9 @@ class DrawingApp:
                     for line in lines:
                         x, y = line
                         if x == 0 and y == 0:
-                            # Lift the pen (move to home position)
-                            actions.append(joint_ptp(home_joints))
+                            pen_lifted = True
+                            # Move the z coordinate to the maximum value to lift the pen
+                            actions.append(cartesian_ptp(current_pose @ Pose((0, 0, self.z_origin, 0, 0, 0))))
                         else:
                             # Move to the point (x, y) with a fixed z value
 

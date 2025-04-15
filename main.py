@@ -12,6 +12,16 @@ import os
 from dotenv import load_dotenv
 
 class DrawingApp:
+
+    # Properties to store the origin and maximum points for the robot drawing area
+    x_origin = -336 # Top left X coordinate of the drawing area
+    y_origin = -371 # Top left Y coordinate of the drawing area
+    z_origin = 60 # Z coordinate to hover marker above drawing area
+
+    x_max = 282  # Right border X coordinate of the drawing area
+    y_max = -545 # Bottom border Y coordinate of the drawing area
+    z_max = 40   # Z coordinate to place marker on drawing area
+
     def __init__(self, root):
         self.root = root
         self.root.title("Robo Drawing Pad")
@@ -66,6 +76,28 @@ class DrawingApp:
         """Clear the canvas and reset the points list."""
         self.canvas.delete("all")
         self.points = []
+
+    def map_coordinates_to_robot_drawing_area(self, lines):
+        """Map coordinates from the canvas to the robot drawing area, reversing Y axis."""
+        mapped_points = []
+        canvas_width = 800
+        canvas_height = 600
+
+        for line in lines:
+            x, y = map(int, line.strip().split(","))
+
+            # Preserve the 0,0 point (used as a pen lift marker)
+            if x == 0 and y == 0:
+                mapped_points.append((0, 0))
+                continue
+
+            # Linear interpolation for X
+            x_mapped = int(self.x_origin + (x / canvas_width) * (self.x_max - self.x_origin))
+            # Reverse Y axis: canvas Y=0 is top, robot Y=origin is top, but robot Y increases downward (or vice versa)
+            y_mapped = int(self.y_origin + ((canvas_height - y) / canvas_height) * (self.y_max - self.y_origin))
+            mapped_points.append((x_mapped, y_mapped))
+
+        return mapped_points
     
     def save_points(self):
         """Save the points to a text file."""
@@ -77,7 +109,7 @@ class DrawingApp:
     
     async def draw_with_robot(self):
         """Placeholder for the 'Draw with Robot' functionality."""
-        messagebox.showinfo("Robot Drawing...", "Draw with Robot functionality will be implemented later.")
+        messagebox.showinfo("Robot Drawing...", "Draw starting...")
         await self.execDraw()
 
     # self added as a parameter to the function to be able to call it from the button
@@ -97,7 +129,7 @@ class DrawingApp:
             password = os.getenv("PASSWORD"),
         )
 
-        async with Nova() as nova:
+        async with nova:
             cell = nova.cell()
             controller = await cell.ensure_virtual_robot_controller(
                 "myvirtualbot",
@@ -110,24 +142,37 @@ class DrawingApp:
                 tcp = "Flange"
                 home_joints = await motion_group.joints()
                 current_pose = await motion_group.tcp_pose(tcp)
+                actions = []
 
+                print("Starting robot drawing...")
                 # Loop through points from points.txt and add coordinates to robot action plan
                 with open("points.txt", "r") as file:
                     lines = file.readlines()
-                    actions = []
+                    lines = self.map_coordinates_to_robot_drawing_area(lines)
+                    
+                    pen_lifted = True
                     for line in lines:
-                        x, y = map(int, line.strip().split(","))
+                        x, y = line
                         if x == 0 and y == 0:
                             # Lift the pen (move to home position)
                             actions.append(joint_ptp(home_joints))
                         else:
                             # Move to the point (x, y) with a fixed z value
-                            actions.append(cartesian_ptp(current_pose @ Pose((x, y, 0, 0, 0, 0))))
 
+                            if pen_lifted:
+                                # Move to the point (x, y) with the pen hovering above the drawing area
+                                # and then move down to the drawing area
+                                actions.append(cartesian_ptp(current_pose @ Pose((x, y, self.z_origin, 0, 0, 0))))
+                                actions.append(cartesian_ptp(current_pose @ Pose((x, y, self.z_max, 0, 0, 0))))
+                                pen_lifted = False
+                            else:
+                                actions.append(cartesian_ptp(current_pose @ Pose((x, y, self.z_origin, 0, 0, 0))))
+
+                print("Executing robot drawing...")
                 trajectory = await motion_group.plan(actions, tcp)
                 await motion_group.execute(trajectory, tcp, actions)
 
-        await nova.close()
+                print("Robot drawing completed.")
 
 if __name__ == "__main__":
     root = tk.Tk()

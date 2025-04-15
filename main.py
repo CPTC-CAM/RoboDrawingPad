@@ -90,10 +90,11 @@ class DrawingApp:
         # host = os.getenv("NOVA_API")
         # access_token = os.getenv("NOVA_ACCESS_TOKEN")
 
+        # Use local instance with IP, username and password
         nova = Nova(
-            host="hostnameorIPhere",
-            username="yourusername",
-            password="yourpassword",
+            host = os.getenv("HOST"),
+            username = os.getenv("USERNAME"),
+            password = os.getenv("PASSWORD"),
         )
 
         async with Nova() as nova:
